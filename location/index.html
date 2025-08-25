@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <title>주소 검색 및 좌표 선택</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    /* 기본 레이아웃 */
+    body, html { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    #map { height: 100%; }
+    .output-panel { position: absolute; top: 10px; right: 10px; width: 350px; max-height: 95%; overflow-y: auto; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000; display: flex; flex-direction: column; gap: 15px; }
+    .output-panel h4 { margin: 0 0 8px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .search-container { display: flex; gap: 8px; }
+    #address-search-input { flex-grow: 1; border: 1px solid #ccc; border-radius: 4px; padding: 8px; font-size: 14px; }
+    #address-search-btn { border: none; background-color: #007bff; color: white; padding: 0 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    #address-search-btn:hover { background-color: #0056b3; }
+    .address-info { font-size: 13px; color: #555; background-color: #f0f0f0; padding: 10px; border-radius: 4px; border: 1px solid #ddd; word-break: keep-all; }
+    .address-info strong { color: #000; }
+    ul#coord-list { list-style-type: none; margin: 0; padding: 0; font-size: 13px; color: #444; }
+    ul#coord-list li { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f0f0f0; gap: 10px; }
+    ul#coord-list li:last-child { border-bottom: none; }
+    .list-item-index { background-color: #dc3545; color: white; font-weight: bold; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .list-item-details { flex-grow: 1; word-break: keep-all; }
+    .list-item-details p { margin: 0 0 4px 0; font-size: 12px; }
+    .list-item-details p strong { color: #555; }
+    .list-item-details p:last-child { margin-bottom: 0; }
+    .delete-btn { background: #ff4d4d; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; align-self: center; }
+    .delete-btn:hover { background: #d93636; }
+    .clear-btn { width: 100%; padding: 10px; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; background-color: #dc3545; }
+    .clear-btn:hover { background-color: #c82333; }
+    .marker-number-icon { background-color: #dc3545; color: white; font-weight: bold; font-size: 14px; text-align: center; line-height: 24px; border-radius: 50%; width: 24px; height: 24px; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+    #map { height: 100%; }
+
+    /* 우측 정보 패널 */
+    .output-panel {
+      position: absolute; top: 10px; right: 10px;
+      width: 350px; max-height: 95%; overflow-y: auto;
+      background: rgba(255, 255, 255, 0.95); padding: 15px;
+      border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000; display: flex; flex-direction: column; gap: 15px;
+    }
+    .output-panel h4 { margin: 0 0 8px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    
+    /* 주소 검색 영역 */
+    .search-container { display: flex; gap: 8px; }
+    #address-search-input { flex-grow: 1; border: 1px solid #ccc; border-radius: 4px; padding: 8px; font-size: 14px; }
+    #address-search-btn { border: none; background-color: #007bff; color: white; padding: 0 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    #address-search-btn:hover { background-color: #0056b3; }
+
+    /* 주소 정보 영역 */
+    .address-info { font-size: 13px; color: #555; background-color: #f0f0f0; padding: 10px; border-radius: 4px; border: 1px solid #ddd; word-break: keep-all; }
+    .address-info strong { color: #000; }
+
+    /* 좌표 목록 */
+    ul#coord-list { list-style-type: none; margin: 0; padding: 0; font-size: 13px; color: #444; }
+    ul#coord-list li { display: flex; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f0f0f0; gap: 10px; }
+    ul#coord-list li:last-child { border-bottom: none; }
+    .list-item-index { background-color: #dc3545; color: white; font-weight: bold; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .list-item-details { flex-grow: 1; word-break: keep-all; }
+    .list-item-details p { margin: 0 0 4px 0; font-size: 12px; }
+    .list-item-details p strong { color: #555; }
+    .list-item-details p:last-child { margin-bottom: 0; }
+    .delete-btn { background: #ff4d4d; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; align-self: center; }
+    .delete-btn:hover { background: #d93636; }
+    
+    /* 버튼 */
+    .clear-btn { width: 100%; padding: 10px; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; background-color: #dc3545; }
+    .clear-btn:hover { background-color: #c82333; }
+
+    /* ✨ 숫자 마커 아이콘 스타일 */
+    .marker-number-icon {
+      background-color: #dc3545;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+      text-align: center;
+      line-height: 24px;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+  
+  <div class="output-panel">
+    <div>
+      <h4>🗺️ 주소로 검색</h4>
+      <div class="search-container">
+        <input type="text" id="address-search-input" placeholder="전체 주소 또는 도로명 입력...">
+        <button id="address-search-btn">검색</button>
+      </div>
+    </div>
+    <div>
+      <h4>📍 마지막 추가 위치</h4>
+      <div id="full-address" class="address-info"><strong>전체 주소:</strong> 지도를 클릭하거나 검색하세요.</div>
+      <div id="road-address" class="address-info" style="margin-top: 5px;"><strong>도로명 주소:</strong> 지도를 클릭하거나 검색하세요.</div>
+    </div>
+    <div>
+      <h4>📋 저장된 위치 목록</h4>
+      <ul id="coord-list"></ul>
+    </div>
+    <div>
+      <button id="clear-btn" class="clear-btn">모두 지우기</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // --- 1. 초기 설정 (이전과 동일) ---
+    const map = L.map('map').setView([37.6543, 127.0565], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+    const fullAddressDiv = document.getElementById("full-address");
+    const roadAddressDiv = document.getElementById("road-address");
+    const coordList = document.getElementById("coord-list");
+    const clearBtn = document.getElementById("clear-btn");
+    const searchInput = document.getElementById("address-search-input");
+    const searchBtn = document.getElementById("address-search-btn");
+
+    let selectedPlaces = [];
+    // --- 2. 노원구 경계 시각화 (✨ 좌표 직접 삽입) ---
+    const nowonBoundary = [
+        [37.6923, 127.0545], [37.6835, 127.0772], [37.6698, 127.0833],
+        [37.6543, 127.0955], [37.6381, 127.0815], [37.6200, 127.0759],
+        [37.6186, 127.0601], [37.6339, 127.0441], [37.6493, 127.0530],
+        [37.6749, 127.0321], [37.6923, 127.0545]
+    ];
+    
+    // 폴리곤 레이어 생성 및 지도에 추가
+    const polygon = L.polygon(nowonBoundary, { 
+        color: 'blue',      // 선 색상
+        weight: 2,          // 선 굵기
+        fillOpacity: 0.1    // 채우기 투명도
+    }).addTo(map);
+
+    // 지도 범위를 폴리곤에 맞춤
+    map.fitBounds(polygon.getBounds());
+
+    // --- 3. 주소 변환 및 마커/목록 추가 (공통 함수) ---
+    async function addPlace(lat, lng) {
+        const latFixed = parseFloat(lat.toFixed(6));
+        const lngFixed = parseFloat(lng.toFixed(6));
+        const addresses = await getAddressFromCoords(latFixed, lngFixed);
+        
+        fullAddressDiv.innerHTML = `<strong>전체 주소:</strong> ${addresses.fullAddress}`;
+        roadAddressDiv.innerHTML = `<strong>도로명 주소:</strong> ${addresses.roadAddress}`;
+        
+        // ✨ 마커는 아직 지도에 추가하지 않고 데이터만 생성
+        const newPlace = {
+            id: Date.now(),
+            lat: latFixed,
+            lng: lngFixed,
+            fullAddress: addresses.fullAddress,
+            roadAddress: addresses.roadAddress,
+            marker: L.marker([latFixed, lngFixed]) // 마커 객체만 생성
+        };
+
+        selectedPlaces.push(newPlace);
+        
+        // ✨ 마커와 목록을 업데이트하는 통합 함수 호출
+        updateMarkersAndList();
+        
+        // 마지막에 추가된 마커의 팝업 열기
+        newPlace.marker.openPopup();
+    }
+    
+    // --- 4. 마커와 목록을 동기화하여 업데이트하는 통합 함수 (✨ 핵심 변경) ---
+    function updateMarkersAndList() {
+        coordList.innerHTML = ""; // 목록 초기화
+
+        selectedPlaces.forEach((place, index) => {
+            const number = index + 1;
+
+            // 아이콘 생성
+            const numberIcon = L.divIcon({
+                className: 'marker-number-icon',
+                html: `<b>${number}</b>`,
+                iconSize: [24, 24],
+                iconAnchor: [14, 14] // 아이콘 위치 조정
+            });
+
+            // 마커에 아이콘 설정하고 지도에 추가
+            place.marker.setIcon(numberIcon);
+            if (!map.hasLayer(place.marker)) {
+                place.marker.addTo(map);
+            }
+            
+            // 팝업 내용 업데이트
+            place.marker.bindPopup(`<b>${number}. ${place.roadAddress}</b><br>${place.fullAddress}`);
+            
+            // 목록(li) 생성
+            const li = document.createElement("li");
+            li.innerHTML = `
+                <div class="list-item-index">${number}</div>
+                <div class="list-item-details">
+                    <p><strong>도로명:</strong> ${place.roadAddress}</p>
+                    <p><strong>전체:</strong> ${place.fullAddress}</p>
+                    <p><strong>좌표:</strong> (${place.lat}, ${place.lng})</p>
+                </div>
+                <button class="delete-btn" data-id="${place.id}">삭제</button>
+            `;
+            coordList.appendChild(li);
+        });
+    }
+
+    // --- 5. 이벤트 리스너 및 기타 함수 (getAddressFromCoords 등은 이전과 동일) ---
+    async function getAddressFromCoords(lat, lng) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("주소 API 호출 실패");
+            const data = await res.json();
+            const fullAddress = data.display_name || "주소를 찾을 수 없음";
+            const details = data.address;
+            let roadAddress = "도로명 주소 없음";
+            if (details && details.road) {
+                roadAddress = `${details.road} ${details.house_number || ''}`.trim();
+            }
+            return { fullAddress, roadAddress };
+        } catch (error) {
+            return { fullAddress: "주소 변환 실패", roadAddress: "주소 변환 실패" };
+        }
+    }
+
+    map.on("click", (e) => addPlace(e.latlng.lat, e.latlng.lng));
+    
+    async function searchByAddress() {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=kr`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("검색 API 호출 실패");
+            const data = await res.json();
+            if (data.length > 0) {
+                const { lat, lon } = data[0];
+                map.flyTo([lat, lon], 16);
+                addPlace(parseFloat(lat), parseFloat(lon));
+                searchInput.value = "";
+            } else {
+                alert("검색 결과가 없습니다. 주소를 다시 확인해주세요.");
+            }
+        } catch (error) {
+            alert("주소 검색 중 오류가 발생했습니다.");
+        }
+    }
+    
+    searchBtn.addEventListener('click', searchByAddress);
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchByAddress();
+    });
+
+    // ✨ 삭제 로직 수정
+    coordList.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-btn')) {
+            const placeId = Number(e.target.dataset.id);
+            const placeToRemove = selectedPlaces.find(p => p.id === placeId);
+            if (placeToRemove) {
+                map.removeLayer(placeToRemove.marker); // 지도에서 마커 제거
+                selectedPlaces = selectedPlaces.filter(p => p.id !== placeId); // 배열에서 데이터 제거
+                updateMarkersAndList(); // ✨ 마커와 목록 전체를 다시 그림 (번호 재정렬)
+            }
+        }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      selectedPlaces.forEach(p => map.removeLayer(p.marker));
+      selectedPlaces = [];
+      updateMarkersAndList(); // 목록을 비우고 다시 그림
+      fullAddressDiv.innerHTML = `<strong>전체 주소:</strong> 지도를 클릭하거나 검색하세요.`;
+      roadAddressDiv.innerHTML = `<strong>도로명 주소:</strong> 지도를 클릭하거나 검색하세요.`;
+    });
+  </script>
+</body>
+</html>

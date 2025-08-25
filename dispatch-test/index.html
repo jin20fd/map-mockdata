@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <title>좌표 선택기</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <div id="map"></div>
+  
+  <div class="output-panel">
+    <div>
+      <h4>📍 마지막으로 클릭한 곳 주소</h4>
+      <div id="last-address">지도를 클릭하여 주소를 확인하세요.</div>
+    </div>
+    <div>
+      <h4>📋 좌표 배열 (복사용)</h4>
+      <textarea id="coords-output" readonly></textarea>
+    </div>
+    <div class="button-container">
+      <button id="copy-btn" class="btn copy-btn">복사하기</button>
+      <button id="clear-btn" class="btn clear-btn">모두 지우기</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script defer src="map.js"></script>
+</body>
+</html>
